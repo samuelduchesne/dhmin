@@ -16,15 +16,11 @@ import pandas as pd
 
 
 def read_excel(filename):
-    """Read input Excel file and return dict of DataFrames for each sheet.
+    """
+    Read input Excel file and return dict of DataFrames for each sheet.
 
-    Read an Excel spreadsheet with geographic input data.
-
-    Args:
-        filename: filename to an Excel spreadsheet with 'Vertex' and 'Edge'
-
-    Returns:
-        dict of 2 pandas DataFrames
+    :param filename: ilename to an Excel spreadsheet with 'Vertex' and 'Edge'
+    :return: dict of 2 pandas DataFrames
     """
     with pd.ExcelFile(filename) as xls:
         vertex = xls.parse('Vertex').set_index('Vertex')
@@ -36,18 +32,8 @@ def read_excel(filename):
 
 
 def create_model(vertex, edge, params=None, timesteps=None, shapefiles=None):
-    """return a DHMIN model instance from nodes and edges DataFrame
-
-    Args:
-        vertex: DataFrame of vertex with index and attributes
-        edges: DataFrame of edges with (Vertex1, Vertex2) MultiIndex and attributes
-        params: dict of cost and technical parameters
-        timesteps: list of timestep tuples (duration, scaling factor)
-    Returns:
-        m: a coopr.pyomo ConcreteModel object
-    Usage:
-        see rundh.py
-
+    """
+    return a DHMIN model instance from nodes and edges DataFrame
     The optional argument params can be used to specify any of the
     technical and cost parameters.
 
@@ -57,10 +43,11 @@ def create_model(vertex, edge, params=None, timesteps=None, shapefiles=None):
     peak power requirement (peak)*p of all consumers. Note that sum(t)
     must be equal to 8760. The inequalities 0 <= t <= 8760 and 0 <= p <= 1
     are to be respected.
-    :param vertex:
-    :param params:
-    :param timesteps:
-    :param edge:
+    :return: a coopr.pyomo ConcreteModel object
+    :param vertex: DataFrame of vertex with index and attributes
+    :param params: dict of cost and technical parameters
+    :param timesteps: list of timestep tuples (duration, scaling factor)
+    :param edge: DataFrame of edges with (Vertex1, Vertex2) MultiIndex and attributes
     :param shapefiles:
 
     """
@@ -286,13 +273,20 @@ def create_model(vertex, edge, params=None, timesteps=None, shapefiles=None):
     m.obj = pyomo.Objective(
         sense=pyomo.minimize,
         doc='Minimize costs = network + heat - revenue',
-        rule=obj_rule)
+        rule=objective_rule)
 
     return m
 
 
 # Constraints
 def energy_conservation_rule(m, i, t):
+    """
+
+    :param m: pyomo.ConcreteModel
+    :param i: Vertex Id
+    :param t: Time duration
+    :return: A sum
+    """
     return sum(m.Pin[i, k, t] - m.Pot[k, i, t] for k in m.neighbours[i]) <= m.Q[i, t]
 
 
@@ -362,7 +356,7 @@ def cost_rule(m, cost_type):
         raise NotImplementedError("Unknown cost type!")
 
 
-def obj_rule(m):
+def objective_rule(m):
     return sum(m.costs[cost_type] for cost_type in m.cost_types)
 
 

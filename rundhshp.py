@@ -4,9 +4,10 @@ import dhmintools
 import geopandas
 import pyomo.environ
 from pyomo.opt.base import SolverFactory
+from utils.main import rivus
 
 # config
-base_directory = os.path.join('data', 'angusplant')
+base_directory = os.path.join('shp', 'angusplant')
 building_shapefile = os.path.join(base_directory, 'building')
 edge_file = os.path.join(base_directory, 'edge')
 vertex_file = os.path.join(base_directory, 'vertex')
