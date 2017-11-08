@@ -1,3 +1,5 @@
 doc/_build/*
 *~
 *.pyc
+
+\.idea/
