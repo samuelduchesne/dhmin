@@ -4,10 +4,12 @@
 """
 
 import warnings
+
 try:
     import pyomo.core as pyomo
 except ImportError:
     import coopr.pyomo as pyomo
+
     warnings.warn("Support for Pyomo 3.x is now deprecated and will be removed"
                   "removed with the next release. Please upgrade to Pyomo 4.",
                   FutureWarning, stacklevel=2)
