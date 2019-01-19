@@ -1,5 +1,5 @@
 import dhmin
-import dhmintools
+from dhmin import dhmintools
 import geopandas
 import pyomo.environ
 from pyomo.opt.base import SolverFactory
