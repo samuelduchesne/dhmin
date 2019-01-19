@@ -303,15 +303,15 @@ def pipe_capacity_rule(m, i, j, t):
 
 
 def pipe_usage_rule(m, i, j, t):
-    return m.Pin[i, j, t] <= m.y[i, j, t] * m.edges.ix[i, j]['cap_max']
+    return m.Pin[i, j, t] <= m.y[i, j, t] * m.edges.loc[i, j]['cap_max']
 
 
 def must_build_rule(m, i, j):
-    return m.x[i, j] >= m.edges.ix[i, j]['must_build']
+    return m.x[i, j] >= m.edges.loc[i, j]['must_build']
 
 
 def build_capacity_rule(m, i, j):
-    return m.Pmax[i, j] <= m.x[i, j] * m.edges.ix[i, j]['cap_max']
+    return m.Pmax[i, j] <= m.x[i, j] * m.edges.loc[i, j]['cap_max']
 
 
 def unidirectionality_rule(m, i, j, t):
@@ -332,7 +332,7 @@ def built_then_use_rule(m, i, j, t):
 
 def source_vertices_rule(m, i, t):
     if i in m.source_vertex:
-        return m.Q[i, t] <= m.vertices.ix[i]['capacity'] * m.availability[i, t]
+        return m.Q[i, t] <= m.vertices.loc[i]['capacity'] * m.availability[i, t]
     else:
         return m.Q[i, t] <= 0
 
