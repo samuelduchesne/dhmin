@@ -1,1 +1,1 @@
-from dhmin import *
+from .dhmin import *

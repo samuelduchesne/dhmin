@@ -13,7 +13,6 @@ except ImportError:
                   FutureWarning, stacklevel=2)
 import numpy as np
 import pandas as pd
-import networkx as nx
 
 
 def read_excel(filename):
@@ -36,7 +35,7 @@ def read_excel(filename):
     return data
 
 
-def create_model(vertex, edge, params=None, timesteps=None, shapefiles=None):
+def create_model(vertex, edges, params=None, timesteps=None, shapefiles=None):
     """return a DHMIN model instance from nodes and edges DataFrame
 
     Args:
@@ -86,16 +85,12 @@ def create_model(vertex, edge, params=None, timesteps=None, shapefiles=None):
         'concurrence': 1,  # (%) concurrence effect
     }
 
-    # Entity edge contains column 'Edge' as index. This model (in contrast to
-    # the old GAMS version) does not use the 'Edge' ID on its own, so remove the
-    # edge ID from the index ('Edge', 'Vertex1', 'Vertex2')
-    edges = edge.reset_index('Edge')
 
     # replace default parameter values with user-defined ones, if specified
     tech_parameters.update(params)
 
     # make edges symmetric by duplicating each row (i,j) to (j,i)
-    edges_tmp = edges
+    edges_tmp = edges.copy()
     edges_tmp.index.names = ['Vertex2', 'Vertex1']
     edges_tmp = edges_tmp.reorder_levels(['Vertex1', 'Vertex2'])
     edges = edges_tmp.append(edges, verify_integrity=True)
