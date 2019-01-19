@@ -1,5 +1,5 @@
 import dhmin
-from dhmin import dhmintools
+from dhmin import utils
 import pyomo.environ
 from pyomo.opt.base import SolverFactory
 
@@ -31,5 +31,5 @@ result = optim.solve(prob, timelimit=30, tee=True)
 prob.solutions.load_from(result)
 
 # use special-purpose function to plot power flows
-dhmintools.plot_flows_min(prob)
+utils.plot_flows_min(prob)
 

@@ -1,5 +1,5 @@
 import dhmin
-from dhmin import dhmintools
+from dhmin import utils
 import geopandas
 import pyomo.environ
 from pyomo.opt.base import SolverFactory
@@ -31,7 +31,7 @@ result = solver.solve(prob, timelimit=30, tee=True)
 prob.solutions.load_from(result)
 
 # use special-purpose function to plot power flows (works unchanged!)
-dhmintools.plot_flows_min(prob)
+utils.plot_flows_min(prob)
 
 # read time-independent variable values to DataFrame
 # (list all variables using dhmin.list_entities(instance, 'variables')

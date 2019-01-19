@@ -4,10 +4,12 @@
 """
 
 import warnings
+
 try:
     import pyomo.core as pyomo
 except ImportError:
     import coopr.pyomo as pyomo
+
     warnings.warn("Support for Pyomo 3.x is now deprecated and will be removed"
                   "removed with the next release. Please upgrade to Pyomo 4.",
                   FutureWarning, stacklevel=2)
@@ -84,7 +86,6 @@ def create_model(vertex, edges, params=None, timesteps=None, shapefiles=None):
         'thermal_loss_var': 1e-7,  # (kW/kW/m) variable thermal losses
         'concurrence': 1,  # (%) concurrence effect
     }
-
 
     # replace default parameter values with user-defined ones, if specified
     tech_parameters.update(params)
