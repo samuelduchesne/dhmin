@@ -13,6 +13,7 @@ except ImportError:
                   FutureWarning, stacklevel=2)
 import numpy as np
 import pandas as pd
+import networkx as nx
 
 
 def read_excel(filename):
@@ -225,13 +226,13 @@ def create_model(vertex, edge, params=None, timesteps=None, shapefiles=None):
 
     # Variables
     m.costs = pyomo.Var(m.cost_types)
-    m.x = pyomo.Var(m.edge, within=pyomo.Binary)
+    m.x = pyomo.Var(m.edge, within=pyomo.Binary)  # Is pipe built? Will be the same for all timesteps
     m.Pmax = pyomo.Var(m.edge, within=pyomo.NonNegativeReals)
 
     m.Pin = pyomo.Var(m.edge, m.timesteps, within=pyomo.NonNegativeReals)
     m.Pot = pyomo.Var(m.edge, m.timesteps, within=pyomo.NonNegativeReals)
     m.Q = pyomo.Var(m.vertex, m.timesteps, within=pyomo.NonNegativeReals)
-    m.y = pyomo.Var(m.edge, m.timesteps, within=pyomo.Binary)
+    m.y = pyomo.Var(m.edge, m.timesteps, within=pyomo.Binary)  # Is pipe used during specific timestep
 
     m.energy_conservation = pyomo.Constraint(
         m.vertex, m.timesteps,

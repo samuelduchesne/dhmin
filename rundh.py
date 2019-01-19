@@ -6,7 +6,7 @@ from pyomo.opt.base import SolverFactory
 
 # config
 data_file = 'mnl.xlsx'
-params = {'r_heat':0.07} # only specify changed values
+params = {'r_heat': 0.07} # only specify changed values
 timesteps = [(1600,.8),(1040,.5)] # list of (duration [hours], scaling_factor) tuples
                               # annual fulload hours = sum(t, duration[t]*sf[t]) = 1800
 

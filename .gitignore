@@ -3,3 +3,15 @@ doc/_build/*
 *.pyc
 
 \.idea/
+
+\.ipynb_checkpoints/
+
+dhmin_dev\.egg-info/
+
+results/
+
+result/
+
+*.lp
+
+*.ipynb
