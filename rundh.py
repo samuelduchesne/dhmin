@@ -1,6 +1,5 @@
 import dhmin
-import dhmintools
-import pandas as pd
+from dhmin import dhmintools
 import pyomo.environ
 from pyomo.opt.base import SolverFactory
 
@@ -22,6 +21,9 @@ vertex, edge = data['Vertex'], data['Edge']
 # get model
 # create instance
 # solver interface (GLPK)
+edge = edge.reset_index('Edge')
+vertex['c_heatvar'] = 0.010
+vertex['c_heatfix'] = 0
 prob = dhmin.create_model(vertex, edge, params, timesteps)
 optim = SolverFactory('glpk')
 prob.write('rundh.lp', io_options={'symbolic_solver_labels':True})
