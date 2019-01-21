@@ -37,21 +37,8 @@ def read_excel(filename):
     return data
 
 
-def create_model(vertex, edges, params=None, timesteps=None, shapefiles=None):
+def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Series = None, name='DHMIN'):
     """return a DHMIN model instance from nodes and edges DataFrame
-
-    Args:
-        vertex: DataFrame of vertex with index and attributes
-        edges: DataFrame of edges with (Vertex1, Vertex2) MultiIndex and attributes
-        params: dict of cost and technical parameters
-        timesteps: list of timestep tuples (duration, scaling factor)
-    Returns:
-        m: a coopr.pyomo ConcreteModel object
-    Usage:
-        see rundh.py
-
-    The optional argument params can be used to specify any of the
-    technical and cost parameters.
 
     The optional argument timesteps is given, DHMIN is run in multi-
     seasonal mode that includes a simplified time model. Each (t,p)
@@ -59,12 +46,14 @@ def create_model(vertex, edges, params=None, timesteps=None, shapefiles=None):
     peak power requirement (peak)*p of all consumers. Note that sum(t)
     must be equal to 8760. The inequalities 0 <= t <= 8760 and 0 <= p <= 1
     are to be respected.
-    :param vertex:
-    :param params:
-    :param timesteps:
-    :param edge:
-    :param shapefiles:
 
+    :param name: Name of the model
+    :param vertex: DataFrame of vertex with index and attributes
+    :param edges: DataFrame of edges with (Vertex1, Vertex2) MultiIndex and attributes
+    :param params: dict of cost and technical parameters
+    :param timesteps: list of timestep tuples (duration, scaling factor)
+    :param edge_profile:
+    :return: a coopr.pyomo ConcreteModel object
     """
     if params is None:
         params = {}
@@ -72,7 +61,7 @@ def create_model(vertex, edges, params=None, timesteps=None, shapefiles=None):
         timesteps = []
 
     m = pyomo.ConcreteModel()
-    m.name = 'DHMIN'
+    m.name = name
 
     # DATA PREPARATION
 
@@ -89,6 +78,7 @@ def create_model(vertex, edges, params=None, timesteps=None, shapefiles=None):
 
     # replace default parameter values with user-defined ones, if specified
     tech_parameters.update(params)
+    m.params = params
 
     # make edges symmetric by duplicating each row (i,j) to (j,i)
     edges_tmp = edges.copy()
@@ -140,6 +130,15 @@ def create_model(vertex, edges, params=None, timesteps=None, shapefiles=None):
                                 len(source_vertex)),
                                dtype=np.int)
 
+    # edge profile preparation
+    if edge_profile is not None:
+        # edge_profile is a series of tuples (duration, scaling_factor)
+        # need to return a tuple of (name, duration, scaling_factor)
+        edge_profile = edge_profile.apply(lambda x: [('t{}'.format(duration), duration, sf) for duration, sf in x])
+        edge_profile = edge_profile.apply(lambda x: [*x, (('Pmax', 1, 1))])
+        for i, v0 in enumerate(source_vertex):
+            edge_profile = edge_profile.apply(lambda x: [*x, (('v{}'.format(
+                v0), 1, 1))])
     # MODEL
 
     # Sets
@@ -217,8 +216,16 @@ def create_model(vertex, edges, params=None, timesteps=None, shapefiles=None):
         for y, s in enumerate(source_vertex)
         for x, t in enumerate(timesteps)
     })
-    m.dt = pyomo.Param(m.timesteps, initialize={t[0]: t[1] for t in timesteps})
-    m.scaling_factor = pyomo.Param(m.timesteps, initialize={t[0]: t[2] for t in timesteps})
+    m.dt = pyomo.Param(m.timesteps, initialize={
+        name: duration
+        for name, duration, scaling_factor in timesteps})
+
+    m.scaling_factor = pyomo.Param(m.edge, m.timesteps, initialize={
+        (index[0], index[1], name): scaling_factor
+        for y, index in enumerate(edges.index)
+        for x, edge_timesteps in enumerate(edge_profile.loc[index,:])
+        for z, (name, duration, scaling_factor) in enumerate(edge_timesteps)
+    })
 
     # Variables
     m.costs = pyomo.Var(m.cost_types)
@@ -296,7 +303,7 @@ def energy_conservation_rule(m, i, t):
 def demand_satisfaction_rule(m, i, j, t):
     return m.Pot[i, j, t] == \
            m.Pin[i, j, t] * m.eta[i, j] - \
-           m.y[i, j, t] * m.delta[i, j] * m.scaling_factor[t]
+           m.y[i, j, t] * m.delta[i, j] * m.scaling_factor[i, j, t]
 
 
 def pipe_capacity_rule(m, i, j, t):
@@ -352,7 +359,7 @@ def cost_rule(m, cost_type):
                    for t in m.timesteps)
     elif cost_type == 'revenue':
         return m.costs['revenue'] == \
-               - sum(m.r_heat[i, j] * m.x[i, j] * m.scaling_factor[t] * m.dt[t]
+               - sum(m.r_heat[i, j] * m.x[i, j] * m.scaling_factor[i, j, t] * m.dt[t]
                      for (i, j) in m.edge
                      for t in m.timesteps)
     else:
