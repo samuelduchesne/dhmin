@@ -110,7 +110,7 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
     if timesteps:
         # extend timesteps with (name, duration, scaling factor) tuples and
         # add a near-zero (here: 1 hour) length, nominal power timestep 'Pmax'
-        timesteps = [('t{}'.format(t[0]), t[0], t[1]) for t in timesteps]
+        timesteps = [('t{}'.format(duration), duration, scaling_factor) for duration, scaling_factor in timesteps]
         timesteps.append(('Pmax', 1, 1))
 
         # now get a list of all source nodes
