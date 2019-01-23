@@ -7,6 +7,7 @@ setup(
     url='',
     license='',
     author='Samuel Letellier-Duchesne',
-    author_email='',
-    description='', install_requires=['numpy', 'pandas', 'pyomo']
+    author_email='samuel.letellier-duchesne@polymtl.ca',
+    description='',
+    install_requires=['pandas', 'matplotlib', 'pyomo', 'numpy']
 )
