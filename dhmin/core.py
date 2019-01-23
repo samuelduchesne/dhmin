@@ -16,6 +16,8 @@ except ImportError:
 import numpy as np
 import pandas as pd
 
+from pyomo.core.base.constraint import Constraint
+
 
 def read_excel(filename):
     """Read input Excel file and return dict of DataFrames for each sheet.
@@ -37,7 +39,8 @@ def read_excel(filename):
     return data
 
 
-def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Series = None, name='DHMIN'):
+def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Series = None, name='DHMIN',
+                 is_connected=True):
     """return a DHMIN model instance from nodes and edges DataFrame
 
     The optional argument timesteps is given, DHMIN is run in multi-
@@ -51,8 +54,9 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
     :param vertex: DataFrame of vertex with index and attributes
     :param edges: DataFrame of edges with (Vertex1, Vertex2) MultiIndex and attributes
     :param params: dict of cost and technical parameters
-    :param timesteps: list of timestep tuples (duration, scaling factor)
-    :param edge_profile:
+    :param timesteps: List of timestep tuples (duration, scaling factor)
+    :param edge_profile: Series if (duration, scaling_factor) tuples for each edges
+    :param is_connected: If True forces the solution to be a connected graph, meaning that the network will be distinct
     :return: a coopr.pyomo ConcreteModel object
     """
     if params is None:
@@ -147,6 +151,7 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
         within=m.vertex * m.vertex,
         initialize=edges.index)
     m.cost_types = pyomo.Set(initialize=cost_types)
+    m.is_connected = pyomo.Set(initialize=[is_connected])
     m.tech_params = pyomo.Set(initialize=tech_parameters.keys())
     m.timesteps = pyomo.Set(initialize=[t[0] for t in timesteps])
     m.source_vertex = pyomo.Set(initialize=source_vertex)
@@ -223,7 +228,7 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
     m.scaling_factor = pyomo.Param(m.edge, m.timesteps, initialize={
         (index[0], index[1], name): scaling_factor
         for y, index in enumerate(edges.index)
-        for x, edge_timesteps in enumerate(edge_profile.loc[index,:])
+        for x, edge_timesteps in enumerate(edge_profile.loc[index, :])
         for z, (name, duration, scaling_factor) in enumerate(edge_timesteps)
     })
 
@@ -281,6 +286,10 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
         m.vertex, m.timesteps,
         doc='Non-zero source term Q is only allowed in source vertices',
         rule=source_vertices_rule)
+    m.connected_network = pyomo.Constraint(
+        m.is_connected,
+        doc='Solution must be a connected graph',
+        rule=connected_x_rule)
 
     # Objective
     m.def_costs = pyomo.Constraint(
@@ -343,6 +352,47 @@ def source_vertices_rule(m, i, t):
         return m.Q[i, t] <= m.vertices.loc[i]['capacity'] * m.availability[i, t]
     else:
         return m.Q[i, t] <= 0
+
+
+def connected_x_rule(m, is_connected):
+    if is_connected:
+        return sum(m.x[i, j] for (i, j) in generic_bfs_edges(m, m.vertices.index[0])) \
+               == sum(m.x[i, j] for (i, j) in m.edge) / 2
+    else:
+        return Constraint.Skip
+
+
+def _plain_bfs(m, source):
+    """A fast BFS node generator. Adapted from networkx"""
+    g_adj = m.neighbours
+    seen = set()
+    nextlevel = {source}
+    while nextlevel:
+        thislevel = nextlevel
+        nextlevel = set()
+        for v in thislevel:
+            if v not in seen:
+                yield v
+                seen.add(v)
+                nextlevel.update(g_adj[v])
+
+
+def generic_bfs_edges(m, source):
+    """A fat BFS edge generator. Adapted from networkx"""
+    from collections import deque
+
+    visited = {source}
+    queue = deque([(source, iter(m.neighbours[source]))])
+    while queue:
+        parent, children = queue[0]
+        try:
+            child = next(children)
+            if child not in visited:
+                yield parent, child
+                visited.add(child)
+                queue.append((child, iter(m.neighbours[child])))
+        except StopIteration:
+            queue.popleft()
 
 
 # minimize total costs (network + heat - revenue)
