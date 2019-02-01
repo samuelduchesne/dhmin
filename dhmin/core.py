@@ -84,6 +84,10 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
     tech_parameters.update(params)
     m.params = params
 
+    #
+    m.edges_tmp = edges.copy()
+    m.nodes_tmp = vertex.copy()
+
     # make edges symmetric by duplicating each row (i,j) to (j,i)
     edges_tmp = edges.copy()
     edges_tmp.index.names = ['Vertex2', 'Vertex1']
