@@ -40,7 +40,7 @@ def read_excel(filename):
 
 
 def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Series = None, name='DHMIN',
-                 is_connected=True):
+                 is_connected=True, use_availability=True):
     """return a DHMIN model instance from nodes and edges DataFrame
 
     The optional argument timesteps is given, DHMIN is run in multi-
@@ -127,10 +127,10 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
         availability = np.ones((len(timesteps) + len(source_vertex),
                                 len(source_vertex)),
                                dtype=np.int)
-
-        for i, v0 in enumerate(source_vertex):
-            availability[len(timesteps), i] = 0
-            timesteps.append(('v{}'.format(v0), 1, 1))
+        if use_availability:
+            for i, v0 in enumerate(source_vertex):
+                availability[len(timesteps), i] = 0
+                timesteps.append(('v{}'.format(v0), 1, 1))
     else:
         # no timesteps: create single dummy timestep with 100% availability
         timesteps = [('t0', 1, 1)]
@@ -144,9 +144,10 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
         # need to return a tuple of (name, duration, scaling_factor)
         edge_profile = edge_profile.apply(lambda x: [('t{}'.format(duration), duration, sf) for duration, sf in x])
         edge_profile = edge_profile.apply(lambda x: [*x, (('Pmax', 1, 1))])
-        for i, v0 in enumerate(source_vertex):
-            edge_profile = edge_profile.apply(lambda x: [*x, (('v{}'.format(
-                v0), 1, 1))])
+        if use_availability:
+            for i, v0 in enumerate(source_vertex):
+                edge_profile = edge_profile.apply(lambda x: [*x, (('v{}'.format(
+                    v0), 1, 1))])
     # MODEL
 
     # Sets
