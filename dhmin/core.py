@@ -55,13 +55,13 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
     :param edges: DataFrame of edges with (Vertex1, Vertex2) MultiIndex and attributes
     :param params: dict of cost and technical parameters
     :param timesteps: List of timestep tuples (duration, scaling factor)
-    :param edge_profile: Series if (duration, scaling_factor) tuples for each edges
+    :param edge_profile: Series of (duration, scaling_factor) tuples for each edges
     :param is_connected: If True forces the solution to be a connected graph, meaning that the network will be distinct
     :return: a coopr.pyomo ConcreteModel object
     """
     if params is None:
         params = {}
-    if timesteps is None:
+    # if timesteps is None:
         timesteps = []
 
     m = pyomo.ConcreteModel()
