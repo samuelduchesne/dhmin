@@ -114,32 +114,15 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
     # derive subset of source vertices, i.e. those with column 'init' set to 1
     source_vertex = vertex[vertex.init == 1].index
 
-    # timestep preparation
     if timesteps:
-        # extend timesteps with (name, duration, scaling factor) tuples and
-        # add a near-zero (here: 1 hour) length, nominal power timestep 'Pmax'
-        timesteps = [('t{}'.format(duration), duration, scaling_factor) for duration, scaling_factor in timesteps]
-        timesteps.append(('Pmax', 1, 1))
-
-        # now get a list of all source nodes
-        # for each source, add a non-availability timestep ('v0', 1, 1)
-        # and set availability matrix so that 'v0' is off in that timestep
-        availability = np.ones((len(timesteps) + len(source_vertex),
-                                len(source_vertex)),
-                               dtype=np.int)
-        if use_availability:
-            for i, v0 in enumerate(source_vertex):
-                availability[len(timesteps), i] = 0
-                timesteps.append(('v{}'.format(v0), 1, 1))
-    else:
-        # no timesteps: create single dummy timestep with 100% availability
-        timesteps = [('t0', 1, 1)]
-        availability = np.ones((1,
-                                len(source_vertex)),
-                               dtype=np.int)
+        availability, timesteps = prepare_timesteps(source_vertex, timesteps, use_availability)
 
     # edge profile preparation
     if edge_profile is not None:
+        # first, redo the timestep list (use first occurrence)
+        timesteps = edge_profile.iloc[0]
+        availability, timesteps = prepare_timesteps(source_vertex, timesteps, use_availability)
+
         # edge_profile is a series of tuples (duration, scaling_factor)
         # need to return a tuple of (name, duration, scaling_factor)
         edge_profile = edge_profile.apply(lambda x: [('t{}'.format(duration), duration, sf) for duration, sf in x])
@@ -148,6 +131,14 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
             for i, v0 in enumerate(source_vertex):
                 edge_profile = edge_profile.apply(lambda x: [*x, (('v{}'.format(
                     v0), 1, 1))])
+
+        # make edge_profile symmetric by duplicating each row (i,j) to (j,i)
+        edges_tmp = edge_profile.copy()
+        edges_tmp.index.names = ['Vertex2', 'Vertex1']
+        edges_tmp = edges_tmp.reorder_levels(['Vertex1', 'Vertex2'])
+        edge_profile = edges_tmp.append(edge_profile, verify_integrity=True)
+        del edges_tmp
+
     # MODEL
 
     # Sets
@@ -230,12 +221,19 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
         name: duration
         for name, duration, scaling_factor in timesteps})
 
-    m.scaling_factor = pyomo.Param(m.edge, m.timesteps, initialize={
-        (index[0], index[1], name): scaling_factor
-        for y, index in enumerate(edges.index)
-        for x, edge_timesteps in enumerate(edge_profile.loc[index, :])
-        for z, (name, duration, scaling_factor) in enumerate(edge_timesteps)
-    })
+    if timesteps and edge_profile is None:
+        # if using a single timestep representation for all edges
+        m.scaling_factor = pyomo.Param(m.timesteps, initialize={
+            timestep_name: scaling_factor
+            for timestep_name, duration, scaling_factor in timesteps
+        })
+    else:
+        # if using a different timestep representation for each edges
+        m.scaling_factor = pyomo.Param(m.edge, m.timesteps, initialize={
+            (u,v, timestep_name): scaling_factor
+            for u,v in edges.index
+            for timestep_name, duration, scaling_factor in edge_profile[u, v]
+        })
 
     # Variables
     m.costs = pyomo.Var(m.cost_types)
@@ -307,6 +305,37 @@ def create_model(vertex, edges, params=None, timesteps=None, edge_profile: pd.Se
         rule=obj_rule)
 
     return m
+
+
+def prepare_timesteps(source_vertex, timesteps, use_availability):
+    """timestep preparation"""
+    if timesteps:
+        # extend timesteps with (name, duration, scaling factor) tuples and
+        # add a near-zero (here: 1 hour) length, nominal power timestep 'Pmax'
+        timesteps = [('t{}'.format(duration), duration, scaling_factor) for duration, scaling_factor in timesteps]
+        timesteps.append(('Pmax', 1, 1))
+
+        # now get a list of all source nodes
+        # for each source, add a non-availability timestep ('v0', 1, 1)
+        # and set availability matrix so that 'v0' is off in that timestep
+        availability = np.ones((len(timesteps) + len(source_vertex),
+                                len(source_vertex)),
+                               dtype=np.int)
+        if use_availability:
+            for i, v0 in enumerate(source_vertex):
+                availability[len(timesteps), i] = 0
+                timesteps.append(('v{}'.format(v0), 1, 1))
+    else:
+        # no timesteps: create single dummy timestep with 100% availability
+        timesteps = [('t0', 1, 1)]
+        availability = np.ones((1,
+                                len(source_vertex)),
+                               dtype=np.int)
+        if use_availability:
+            for i, v0 in enumerate(source_vertex):
+                availability[len(timesteps), i] = 0
+                timesteps.append(('v{}'.format(v0), 1, 1))
+    return availability, timesteps
 
 
 # Constraints
