@@ -1,0 +1,63 @@
+[project]
+name = "dhmin"
+version = "1.0.0"
+description = "A weakly temporal district heating topology optimization model"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.10"
+authors = [{ name = "Samuel Letellier-Duchesne" }]
+dependencies = [
+    "numpy",
+    "pandas",
+    "pyomo",
+]
+
+[project.optional-dependencies]
+geo = ["geopandas"]
+plot = ["matplotlib"]
+dev = ["ruff", "pyright", "pre-commit"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "W",     # pycodestyle warnings
+    "I",     # isort
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "SIM",   # flake8-simplify
+    "TCH",   # flake8-type-checking
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dhmin"]
+
+[tool.pyright]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
+# Pyomo's ConcreteModel is fully dynamic — all Sets, Params, Vars, and
+# Constraints are assigned/accessed as attributes at runtime. The pyomo type
+# stubs don't model this, causing false positives for every model-building
+# operation. These rules are disabled to accommodate pyomo's design.
+reportAttributeAccessIssue = false
+reportOperatorIssue = false
+reportIndexIssue = false
+reportReturnType = false
+reportCallIssue = false
+reportGeneralTypeIssues = false
+reportArgumentType = false
+reportOptionalOperand = false
+reportAssignmentType = false
