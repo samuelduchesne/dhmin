@@ -8,6 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pyomo.core as pyomo
+from pyomo.core.base.set import SetProduct
 
 
 def read_excel(filename: str) -> dict[str, pd.DataFrame]:
@@ -145,7 +146,19 @@ def create_model(
         ep = ep.apply(lambda x: [*x, ("Pmax", 1, 1)])
         for _i, v0 in enumerate(source_vertex):
             ep = ep.apply(lambda x, _v0=v0: [*x, (f"v{_v0}", 1, 1)])
-        edge_profile = ep
+        # symmetrize to match the already-symmetrized edges
+        ep_sym = ep.copy()
+        ep_sym.index = pd.MultiIndex.from_tuples(
+            [(j, i) for i, j in ep.index],
+            names=ep.index.names,
+        )
+        edge_profile = pd.concat([ep, ep_sym])
+    else:
+        # default: all edges use the global timestep scaling factors
+        edge_profile = pd.Series(
+            [ts_list] * len(edges),
+            index=edges.index,
+        )
 
     # MODEL
 
@@ -246,9 +259,8 @@ def create_model(
         m.timesteps,
         initialize={
             (index[0], index[1], ts_name): scaling_factor
-            for _y, index in enumerate(edges.index)
-            for _x, edge_timesteps in enumerate(edge_profile.loc[index, :])  # type: ignore[union-attr]
-            for _z, (ts_name, _duration, scaling_factor) in enumerate(edge_timesteps)
+            for index in edges.index
+            for ts_name, _duration, scaling_factor in edge_profile.loc[index]
         },
     )
 
@@ -584,24 +596,20 @@ def _get_onset_names(entity: Any) -> list[str]:
     labels: list[str] = []
 
     if isinstance(entity, pyomo.Set):
-        if entity.dimen > 1:
-            # N-dimensional set tuples, possibly with nested set tuples within
-            domains = entity.domain.set_tuple if entity.domain else entity.set_tuple
-
-            for domain_set in domains:
-                labels.extend(_get_onset_names(domain_set))
-
-        elif entity.dimen == 1:
-            if entity.domain:
-                # 1D subset; add domain name
-                labels.append(entity.domain.name)
-            else:
-                # unrestricted set; add entity name
-                labels.append(entity.name)
+        if isinstance(entity, SetProduct):
+            # SetProduct (e.g. vertex*vertex or edge*timesteps): recurse into components
+            for subset in entity.subsets():
+                labels.extend(_get_onset_names(subset))
+        elif entity.dimen > 1 and isinstance(getattr(entity, "domain", None), SetProduct):
+            # flat set with multi-dimensional domain (e.g. edge within vertex*vertex)
+            for subset in entity.domain.subsets():
+                labels.extend(_get_onset_names(subset))
+        elif entity.dimen >= 1:
+            labels.append(entity.name)
 
     elif isinstance(entity, (pyomo.Param, pyomo.Var, pyomo.Constraint, pyomo.Objective)):
-        if entity.dim() > 0 and entity._index:
-            labels = _get_onset_names(entity._index)
+        if entity.dim() > 0:
+            labels = _get_onset_names(entity.index_set())
 
     else:
         raise ValueError("Unknown entity type!")

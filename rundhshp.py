@@ -26,6 +26,13 @@ edge.set_index(["Edge", "Vertex1", "Vertex2"], inplace=True)
 # dhmin.create_model must not rely on vertex/edge DataFrames to contain any
 # geometry information
 
+# drop Edge level from index; create_model expects (Vertex1, Vertex2) MultiIndex
+edge.reset_index("Edge", inplace=True)
+
+# set heat cost columns expected by create_model
+vertex["c_heatvar"] = vertex["cost_heat"]
+vertex["c_heatfix"] = 0
+
 # get model
 # create instance
 # solver interface (GLPK)
@@ -41,10 +48,6 @@ utils.plot_flows_min(prob)
 # (list all variables using dhmin.list_entities(instance, 'variables')
 caps = dhmin.get_entities(prob, ["Pmax", "x"])
 costs = dhmin.get_entity(prob, "costs")
-
-# remove Edge from index, so that edge and caps are both indexed on
-# (vertex, vertex) tuples, i.e. their indices match for identical edges
-edge.reset_index("Edge", inplace=True)
 
 # change index names to 'Vertex1', 'Vertex2' from auto-inferred labels
 # 'vertex','vertex_'
