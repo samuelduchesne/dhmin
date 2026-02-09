@@ -1,19 +1,32 @@
-doc/_build/*
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+
+# uv
+uv.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
 *~
-*.pyc
 
-\.idea/
-
-\.ipynb_checkpoints/
-
-dhmin_dev\.egg-info/
-
-results/
-
-result/
-
-*.lp
-
+# Jupyter
+.ipynb_checkpoints/
 *.ipynb
 
-dhmin\.egg-info/
+# Sphinx docs
+doc/_build/
+
+# Project outputs
+results/
+result/
+*.lp
