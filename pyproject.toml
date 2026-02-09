@@ -15,7 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 geo = ["geopandas"]
 plot = ["matplotlib"]
-dev = ["ruff", "pyright"]
+dev = ["ruff", "pyright", "pre-commit"]
 
 [build-system]
 requires = ["hatchling"]
